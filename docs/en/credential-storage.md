@@ -31,6 +31,55 @@ Use Keychain generic passwords.
 Use the emulator's own reverse-DNS application id as the service and the RA
 username as the account.
 
+Use `SecItemAdd`, `SecItemCopyMatching`, `SecItemUpdate`, and `SecItemDelete`.
+Do not use `SecKeychainFindGenericPassword` or other `SecKeychain*` APIs in new
+code; those APIs are deprecated on macOS 10.10 and later.
+
+If your deployment target includes macOS 10.13 or 10.14, do not use
+`kSecUseDataProtectionKeychain`. That key is available on macOS 10.15 and later,
+and it switches the query to the Data Protection Keychain. Items stored there
+are separate from items in the traditional login Keychain, so adding this key can
+also make previously saved tokens disappear from lookup.
+
+When using `kSecAttrAccessible` with the normal macOS Keychain, also include
+`kSecAttrSynchronizable` in the query. For saved RA tokens, add new items with
+`kSecAttrSynchronizable: kCFBooleanFalse`. For lookup, update, and delete
+queries, use `kSecAttrSynchronizable: kSecAttrSynchronizableAny` so existing
+items are found regardless of their synchronizable attribute.
+
+Important fields for the save query:
+
+```cpp
+kSecClass: kSecClassGenericPassword
+kSecAttrService: service
+kSecAttrAccount: account
+kSecValueData: token_data
+kSecAttrSynchronizable: kCFBooleanFalse
+kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock
+```
+
+Important fields for the load query:
+
+```cpp
+kSecClass: kSecClassGenericPassword
+kSecAttrService: service
+kSecAttrAccount: account
+kSecAttrSynchronizable: kSecAttrSynchronizableAny
+kSecReturnData: kCFBooleanTrue
+kSecMatchLimit: kSecMatchLimitOne
+```
+
+`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` can be a reasonable choice
+for a macOS 10.15+ only design that intentionally uses the Data Protection
+Keychain. For portable macOS 10.13+ emulator integrations, prefer the normal
+Keychain with `kSecAttrAccessibleAfterFirstUnlock`.
+
+Keychain tests are sensitive to sandboxing and bundle identity. A CLI test or
+test runner may return errors such as `errSecParam (-50)` even when the same
+code works from the real app or outside the sandbox. Verify the final behavior
+with save, load, and delete against the actual macOS Keychain. Log the OSStatus
+for diagnosis, but never log the token.
+
 ## Windows
 
 Use Windows Credential Manager with a Generic Credential.

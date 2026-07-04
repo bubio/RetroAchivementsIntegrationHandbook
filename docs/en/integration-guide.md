@@ -220,7 +220,10 @@ Recommended service/account shape:
 
 Use OS credential stores where available:
 
-- macOS: Keychain
+- macOS: Keychain generic password with
+  `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`; use the Data Protection
+  keychain (`kSecUseDataProtectionKeychain`) so the token can be read after the
+  first unlock without prompting on every access.
 - Windows: Credential Manager, Generic Credential
 - Linux desktop: Secret Service via libsecret
 
